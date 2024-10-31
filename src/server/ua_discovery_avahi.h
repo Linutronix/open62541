@@ -11,6 +11,9 @@
  *    Copyright 2017 (c) Julian Grothoff
  */
 
+#ifndef SRC_SERVER_UA_DISCOVERY_AVAHI_INCLUDED
+#define SRC_SERVER_UA_DISCOVERY_AVAHI_INCLUDED
+
 #ifndef UA_DISCOVERY_MANAGER_H_
 #define UA_DISCOVERY_MANAGER_H_
 
@@ -49,6 +52,19 @@ typedef struct {
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
 
+#include <avahi-client/client.h>
+#include <avahi-client/lookup.h>
+#include <avahi-client/publish.h>
+#include <avahi-common/simple-watch.h>
+#include <avahi-common/strlst.h>
+#include <avahi-common/error.h>
+
+typedef struct {
+    AvahiSimplePoll *simple_poll;
+    AvahiClient *client;
+    AvahiEntryGroup *group;
+    AvahiServiceBrowser *browser;
+} AvahiServiceContext;
 
 /**
  * TXT record:
@@ -91,7 +107,7 @@ struct UA_DiscoveryManager {
     void* registerServerCallbackData;
 
 # ifdef UA_ENABLE_DISCOVERY_MULTICAST
-    // mdns_daemon_t *mdnsDaemon;
+    AvahiServiceContext *ctx;
     UA_Boolean mdnsMainSrvAdded;
 
     /* Full Domain Name of server itself. Used to detect if received mDNS
@@ -119,6 +135,15 @@ UA_DiscoveryManager_setState(UA_DiscoveryManager *dm,
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
 
+
+/** note: ua_discovery "internals" */
+void UA_DiscoveryManager_clearMulticast(UA_DiscoveryManager *dm);
+void UA_DiscoveryManager_startMulticast(UA_DiscoveryManager *dm);
+void UA_DiscoveryManager_stopMulticast(UA_DiscoveryManager *dm);
+
+
+/** note: ua_services_discovery :*/
+
 /* Sends out a new mDNS package for the given server data. This Method is
  * normally called when another server calls the RegisterServer Service on this
  * server. Then this server is responsible to send out a new mDNS package to
@@ -133,29 +158,34 @@ UA_Discovery_updateMdnsForDiscoveryUrl(UA_DiscoveryManager *dm, const UA_String 
                                        const UA_String discoveryUrl, UA_Boolean isOnline,
                                        UA_Boolean updateTxt);
 
-void UA_DiscoveryManager_startMulticast(UA_DiscoveryManager *dm);
-void UA_DiscoveryManager_stopMulticast(UA_DiscoveryManager *dm);
 
-UA_StatusCode
-UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
-                                               const char *fqdnMdnsRecord,
-                                               UA_String serverName,
-                                               struct serverOnNetwork **addedEntry);
 
-UA_StatusCode
-UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
-                                                    const char *fqdnMdnsRecord,
-                                                    UA_String serverName);
+
+
+// UA_StatusCode
+// UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
+//                                                const char *fqdnMdnsRecord,
+//                                                UA_String serverName,
+//                                                struct serverOnNetwork **addedEntry);
+
+// UA_StatusCode
+// UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
+//                                                     const char *fqdnMdnsRecord,
+//                                                     UA_String serverName);
 
 // void mdns_record_received(const struct resource *r, void *data);
 
-void mdns_create_txt(UA_DiscoveryManager *dm, const char *fullServiceDomain,
-                     const char *path, const UA_String *capabilites,
-                     const size_t capabilitiesSize,
-                     void (*conflict)(char *host, int type, void *arg));
+// void mdns_create_txt(UA_DiscoveryManager *dm, const char *fullServiceDomain,
+//                      const char *path, const UA_String *capabilites,
+//                      const size_t capabilitiesSize,
+//                      void (*conflict)(char *host, int type, void *arg));
 
-void mdns_set_address_record(UA_DiscoveryManager *dm, const char *fullServiceDomain,
-                             const char *localDomain);
+// void mdns_set_address_record(UA_DiscoveryManager *dm, const char *fullServiceDomain,
+//                              const char *localDomain);
+
+// mdns_record_t *
+// mdns_find_record(mdns_daemon_t *mdnsDaemon, unsigned short type,
+//                  const char *host, const char *rdname);
 
 #endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
@@ -164,3 +194,5 @@ void mdns_set_address_record(UA_DiscoveryManager *dm, const char *fullServiceDom
 _UA_END_DECLS
 
 #endif /* UA_DISCOVERY_MANAGER_H_ */
+
+#endif /* SRC_SERVER_UA_DISCOVERY_AVAHI_INCLUDED */
