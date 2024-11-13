@@ -49,8 +49,6 @@ typedef struct {
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
 
-#include "mdnsd/libmdnsd/mdnsd.h"
-#define UA_MAXMDNSRECVSOCKETS 8
 
 /**
  * TXT record:
@@ -93,11 +91,6 @@ struct UA_DiscoveryManager {
     void* registerServerCallbackData;
 
 # ifdef UA_ENABLE_DISCOVERY_MULTICAST
-    mdns_daemon_t *mdnsDaemon;
-    UA_ConnectionManager *cm;
-    uintptr_t mdnsSendConnection;
-    uintptr_t mdnsRecvConnections[UA_MAXMDNSRECVSOCKETS];
-    size_t mdnsRecvConnectionsSize;
     UA_Boolean mdnsMainSrvAdded;
 
     /* Full Domain Name of server itself. Used to detect if received mDNS
@@ -141,7 +134,6 @@ UA_Discovery_updateMdnsForDiscoveryUrl(UA_DiscoveryManager *dm, const UA_String 
 
 void UA_DiscoveryManager_startMulticast(UA_DiscoveryManager *dm);
 void UA_DiscoveryManager_stopMulticast(UA_DiscoveryManager *dm);
-void UA_DiscoveryManager_sendMulticastMessages(UA_DiscoveryManager *dm);
 
 UA_StatusCode
 UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
@@ -153,20 +145,6 @@ UA_StatusCode
 UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
                                                     const char *fqdnMdnsRecord,
                                                     UA_String serverName);
-
-void mdns_record_received(const struct resource *r, void *data);
-
-void mdns_create_txt(UA_DiscoveryManager *dm, const char *fullServiceDomain,
-                     const char *path, const UA_String *capabilites,
-                     const size_t capabilitiesSize,
-                     void (*conflict)(char *host, int type, void *arg));
-
-void mdns_set_address_record(UA_DiscoveryManager *dm, const char *fullServiceDomain,
-                             const char *localDomain);
-
-mdns_record_t *
-mdns_find_record(mdns_daemon_t *mdnsDaemon, unsigned short type,
-                 const char *host, const char *rdname);
 
 #endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 

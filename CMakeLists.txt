@@ -705,25 +705,6 @@ file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/src_generated")
 # Generate the config.h
 configure_file(include/open62541/config.h.in ${PROJECT_BINARY_DIR}/src_generated/open62541/config.h)
 
-if(UA_ENABLE_DISCOVERY_MULTICAST)
-  include(GenerateExportHeader)
-    set(MDNSD_LOGLEVEL 300 CACHE STRING "Level at which logs shall be reported" FORCE)
-    
-    # create a "fake" empty library to generate the export header macros
-    if (APPLE)
-    	add_library(libmdnsd INTERFACE ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/mdnsd.h)
-    else()
-    	add_library(libmdnsd ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/mdnsd.h)
-    endif()
-    
-    set_property(TARGET libmdnsd PROPERTY LINKER_LANGUAGE C)
-    set_property(TARGET libmdnsd PROPERTY DEFINE_SYMBOL "MDNSD_DYNAMIC_LINKING_EXPORT")
-    configure_file("deps/mdnsd/libmdnsd/mdnsd_config_extra.in"
-                   "${PROJECT_BINARY_DIR}/src_generated/mdnsd_config_extra")
-    file(READ "${PROJECT_BINARY_DIR}/src_generated/mdnsd_config_extra" MDNSD_CONFIG_EXTRA)
-    generate_export_header(libmdnsd EXPORT_FILE_NAME "${PROJECT_BINARY_DIR}/src_generated/mdnsd_config.h"
-                           BASE_NAME MDNSD DEFINE_NO_DEPRECATED CUSTOM_CONTENT_FROM_VARIABLE MDNSD_CONFIG_EXTRA)
-endif()
 
 # Exported headers
 set(exported_headers ${PROJECT_BINARY_DIR}/src_generated/open62541/config.h
@@ -885,18 +866,9 @@ endif()
 
 if(UA_ENABLE_DISCOVERY_MULTICAST)
     # prepend in list, otherwise it complains that winsock2.h has to be included before windows.h
-    list(APPEND lib_headers
-         ${PROJECT_BINARY_DIR}/src_generated/mdnsd_config.h
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/1035.h
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/xht.h
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/sdtxt.h
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/mdnsd.h)
     list(APPEND lib_sources
-         ${PROJECT_SOURCE_DIR}/src/server/ua_discovery_mdns.c
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/1035.c
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/xht.c
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/sdtxt.c
-         ${PROJECT_SOURCE_DIR}/deps/mdnsd/libmdnsd/mdnsd.c)
+      ${PROJECT_SOURCE_DIR}/src/server/ua_discovery_mdns.c
+    )
 endif()
 
 if(UA_BUILD_FUZZING OR UA_BUILD_OSS_FUZZ)

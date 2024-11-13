@@ -26,11 +26,6 @@ UA_DiscoveryManager_setState(UA_DiscoveryManager *dm,
     if(state == UA_LIFECYCLESTATE_STOPPING ||
        state == UA_LIFECYCLESTATE_STOPPED) {
         state = UA_LIFECYCLESTATE_STOPPED;
-#ifdef UA_ENABLE_DISCOVERY_MULTICAST
-        if(dm->mdnsRecvConnectionsSize != 0 || dm->mdnsSendConnection != 0)
-            state = UA_LIFECYCLESTATE_STOPPING;
-#endif
-
         for(size_t i = 0; i < UA_MAXREGISTERREQUESTS; i++) {
             if(dm->registerRequests[i].client != NULL)
                 state = UA_LIFECYCLESTATE_STOPPING;
@@ -86,12 +81,6 @@ UA_DiscoveryManager_clear(struct UA_ServerComponent *sc) {
         }
     }
 
-    /* Clean up mdns daemon */
-    if(dm->mdnsDaemon) {
-        mdnsd_shutdown(dm->mdnsDaemon);
-        mdnsd_free(dm->mdnsDaemon);
-        dm->mdnsDaemon = NULL;
-    }
 # endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
     return UA_STATUSCODE_GOOD;
@@ -154,11 +143,6 @@ UA_DiscoveryManager_cleanupTimedOut(UA_Server *server, void *data) {
             dm->registeredServersSize--;
         }
     }
-
-#ifdef UA_ENABLE_DISCOVERY_MULTICAST
-    /* Send out multicast */
-    UA_DiscoveryManager_sendMulticastMessages(dm);
-#endif
 }
 
 static UA_StatusCode
