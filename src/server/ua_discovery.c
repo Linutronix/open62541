@@ -145,6 +145,14 @@ UA_DiscoveryManager_cleanupTimedOut(UA_Server *server, void *data) {
     }
 }
 
+static void
+UA_DiscoveryManager_cyclicTimer(UA_Server *server, void *data) {
+    UA_DiscoveryManager_cleanupTimedOut(server, data);
+#ifdef UA_ENABLE_DISCOVERY_MULTICAST
+    UA_DiscoveryManager_mdnsCyclicTimer(server, data);
+#endif
+}
+
 static UA_StatusCode
 UA_DiscoveryManager_start(struct UA_ServerComponent *sc,
                           UA_Server *server) {
@@ -161,7 +169,7 @@ UA_DiscoveryManager_start(struct UA_ServerComponent *sc,
 #endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
     UA_StatusCode res =
-        addRepeatedCallback(server, UA_DiscoveryManager_cleanupTimedOut,
+        addRepeatedCallback(server, UA_DiscoveryManager_cyclicTimer,
                             dm, 1000.0, &dm->discoveryCallbackId);
     if(res != UA_STATUSCODE_GOOD)
         return res;
