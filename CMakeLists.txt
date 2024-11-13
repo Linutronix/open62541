@@ -420,12 +420,14 @@ endif()
 
 # Building shared libs (dll, so). This option is written into ua_config.h.
 set(UA_DYNAMIC_LINKING OFF)
-if(BUILD_SHARED_LIBS)
   set(UA_DYNAMIC_LINKING ON)
   if(UA_ENABLE_DISCOVERY_MULTICAST)
       set(MDNSD_DYNAMIC_LINKING ON)
+      find_package(PkgConfig REQUIRED)
+      pkg_search_module(AVAHI REQUIRED avahi-client avahi-common)
+      include_directories(${AVAHI_INCLUDE_DIRS})
+      list(APPEND open62541_LIBRARIES "${AVAHI_LIBRARIES}")
   endif()
-endif()
 
 if(UA_ENABLE_SUBSCRIPTIONS_ALARMS_CONDITIONS)
     MESSAGE(WARNING "UA_ENABLE_SUBSCRIPTIONS_ALARMS_CONDITIONS is enabled. The feature is under development and marked as EXPERIMENTAL")
@@ -1335,6 +1337,7 @@ SET_TARGET_PROPERTIES(open62541 PROPERTIES
 # DLL requires linking to dependencies
 target_link_libraries(open62541 PUBLIC ${open62541_PUBLIC_LIBRARIES})
 target_link_libraries(open62541 PRIVATE ${open62541_LIBRARIES})
+target_link_libraries(open62541 PUBLIC ${AVAHI_LIBRARIES})
 
 ##########################
 # Build Selected Targets #
