@@ -23,6 +23,7 @@ Building with CMake on Ubuntu or Debian
    sudo apt-get install check libsubunit-dev # for unit tests
    sudo apt-get install python3-sphinx graphviz  # for documentation generation
    sudo apt-get install python3-sphinx-rtd-theme # documentation style
+   sudo apt-get install libavahi-client-dev libavahi-common-dev # for LDS-ME (multicast discovery)
 
    cd open62541
    mkdir build
@@ -264,7 +265,7 @@ Detailed SDK Features
    Enable Discovery Service (LDS)
 
 **UA_ENABLE_DISCOVERY_MULTICAST**
-   Enable Discovery Service with multicast support (LDS-ME)
+   Enable Discovery Service with multicast support (LDS-ME). Requires running avahi-daemon.
 
 **UA_ENABLE_DISCOVERY_SEMAPHORE**
    Enable Discovery Semaphore support
