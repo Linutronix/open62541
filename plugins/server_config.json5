@@ -92,12 +92,6 @@
       //"NA"
       "LDS",
       "GDS"
-    ],
-    mdnsInterfaceIP: "127.0.0.1",
-    mdnsIpAddressList: [
-      1,
-      2,
-      3
     ]
   },
 
