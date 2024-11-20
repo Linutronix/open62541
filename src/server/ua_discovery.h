@@ -49,6 +49,14 @@ typedef struct {
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
 
+#include <avahi-client/client.h>
+#include <avahi-client/lookup.h>
+#include <avahi-client/publish.h>
+#include <avahi-common/error.h>
+#include <avahi-common/malloc.h>
+#include <avahi-common/simple-watch.h>
+#include <avahi-common/strlst.h>
+#include <avahi-common/address.h>
 
 /**
  * TXT record:
@@ -62,6 +70,7 @@ typedef struct {
 typedef struct serverOnNetwork {
     LIST_ENTRY(serverOnNetwork) pointers;
     UA_ServerOnNetwork serverOnNetwork;
+    AvahiEntryGroup *group;
     UA_DateTime created;
     UA_DateTime lastSeen;
     UA_Boolean txtSet;
@@ -93,9 +102,9 @@ struct UA_DiscoveryManager {
 # ifdef UA_ENABLE_DISCOVERY_MULTICAST
     UA_Boolean mdnsMainSrvAdded;
 
-    /* Full Domain Name of server itself. Used to detect if received mDNS
+    /* Name of server itself. Used to detect if received mDNS
      * message was from itself */
-    UA_String selfFqdnMdnsRecord;
+    UA_String selfMdnsRecord;
 
     LIST_HEAD(, serverOnNetwork) serverOnNetwork;
 
@@ -109,6 +118,9 @@ struct UA_DiscoveryManager {
     void *serverOnNetworkCallbackData;
 
     UA_UInt64 mdnsCallbackId;
+    AvahiClient *client;
+    AvahiSimplePoll *simple_poll;
+    AvahiServiceBrowser *browser;
 # endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 };
 

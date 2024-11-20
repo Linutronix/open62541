@@ -70,7 +70,7 @@ UA_DiscoveryManager_clear(struct UA_ServerComponent *sc) {
         UA_free(son);
     }
 
-    UA_String_clear(&dm->selfFqdnMdnsRecord);
+    UA_String_clear(&dm->selfMdnsRecord);
 
     for(size_t i = 0; i < SERVER_ON_NETWORK_HASH_SIZE; i++) {
         serverOnNetwork_hash_entry* currHash = dm->serverOnNetworkHash[i];
