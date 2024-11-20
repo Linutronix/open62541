@@ -112,11 +112,11 @@ entry_group_callback(AvahiEntryGroup *g, AvahiEntryGroupState state,
 
 UA_StatusCode
 UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
-                                               const char *fqdnMdnsRecord,
+                                               const char *mdnsRecord,
                                                UA_String serverName,
                                                struct serverOnNetwork **addedEntry) {
     struct serverOnNetwork *entry =
-            mdns_record_add_or_get(dm, fqdnMdnsRecord, serverName, false);
+            mdns_record_add_or_get(dm, mdnsRecord, serverName, false);
     if(entry) {
         if(addedEntry != NULL)
             *addedEntry = entry;
@@ -125,7 +125,7 @@ UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
 
     UA_LOG_DEBUG(dm->sc.server->config.logging, UA_LOGCATEGORY_SERVER,
                 "Multicast DNS: Add entry to ServersOnNetwork: %s (%S)",
-                 fqdnMdnsRecord, serverName);
+                 mdnsRecord, serverName);
 
     struct serverOnNetwork *listEntry = (serverOnNetwork*)
             UA_malloc(sizeof(struct serverOnNetwork));
@@ -151,8 +151,8 @@ UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
     listEntry->lastSeen = el->dateTime_nowMonotonic(el);
 
     /* add to hash */
-    UA_UInt32 hashIdx = UA_ByteString_hash(0, (const UA_Byte*)fqdnMdnsRecord,
-                                           strlen(fqdnMdnsRecord)) % SERVER_ON_NETWORK_HASH_SIZE;
+    UA_UInt32 hashIdx = UA_ByteString_hash(0, (const UA_Byte*)mdnsRecord,
+                                           strlen(mdnsRecord)) % SERVER_ON_NETWORK_HASH_SIZE;
     struct serverOnNetwork_hash_entry *newHashEntry = (struct serverOnNetwork_hash_entry*)
             UA_malloc(sizeof(struct serverOnNetwork_hash_entry));
     if(!newHashEntry) {
@@ -179,26 +179,20 @@ UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
 
 UA_StatusCode
 UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
-                                                    const char *fqdnMdnsRecord,
+                                                    const char *mdnsRecord,
                                                     UA_String serverName) {
     UA_LOG_DEBUG(dm->sc.server->config.logging, UA_LOGCATEGORY_SERVER,
                  "Multicast DNS: Remove entry from ServersOnNetwork: %s (%S)",
-                 fqdnMdnsRecord, serverName);
+                 mdnsRecord, serverName);
 
     struct serverOnNetwork *entry =
-            mdns_record_add_or_get(dm, fqdnMdnsRecord, serverName, false);
+            mdns_record_add_or_get(dm, mdnsRecord, serverName, false);
     if(!entry)
         return UA_STATUSCODE_BADNOTFOUND;
 
-    UA_String recordStr;
-    // Cast away const because otherwise the pointer cannot be assigned.
-    // Be careful what you do with recordStr!
-    recordStr.data = (UA_Byte*)(uintptr_t)fqdnMdnsRecord;
-    recordStr.length = strlen(fqdnMdnsRecord);
-
     /* remove from hash */
-    UA_UInt32 hashIdx = UA_ByteString_hash(0, (const UA_Byte*)recordStr.data,
-                                           recordStr.length) % SERVER_ON_NETWORK_HASH_SIZE;
+    UA_UInt32 hashIdx = UA_ByteString_hash(0, (const UA_Byte*)serverName.data,
+                                           serverName.length) % SERVER_ON_NETWORK_HASH_SIZE;
     struct serverOnNetwork_hash_entry *hash_entry = dm->serverOnNetworkHash[hashIdx];
     struct serverOnNetwork_hash_entry *prevEntry = hash_entry;
     while(hash_entry) {
@@ -215,7 +209,7 @@ UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
     UA_free(hash_entry);
 
     if(dm->serverOnNetworkCallback &&
-        !UA_String_equal(&dm->selfMdnsRecord, &recordStr))
+        !UA_String_equal(&dm->selfMdnsRecord, &serverName))
         dm->serverOnNetworkCallback(&entry->serverOnNetwork, false,
                                     entry->txtSet,
                                     dm->serverOnNetworkCallbackData);
@@ -456,7 +450,7 @@ browse_callback(AvahiServiceBrowser *b, AvahiIfIndex interface, AvahiProtocol pr
                         "Service '%s' of type '%s' in domain '%s' removed", name, type,
                         domain);
             UA_String nameStr = UA_STRING_ALLOC(name);
-            UA_DiscoveryManager_removeEntryFromServersOnNetwork(dm, name, UA_STRING_NULL);
+            UA_DiscoveryManager_removeEntryFromServersOnNetwork(dm, name, nameStr);
             UA_String_clear(&nameStr);
             break;
         case AVAHI_BROWSER_ALL_FOR_NOW:
