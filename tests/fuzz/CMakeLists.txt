@@ -68,7 +68,6 @@ macro(add_fuzzer FUZZER_NAME FUZZER_SOURCE)
                                   $<TARGET_OBJECTS:open62541-plugins>)
     target_link_libraries(${FUZZER_NAME} ${LIBS})
     target_include_directories(${FUZZER_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src/server)
-    target_include_directories(${FUZZER_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/deps/mdnsd)
     assign_source_group(${FUZZER_SOURCE})
     list(APPEND FUZZER_TARGETS ${FUZZER_NAME})
 endmacro()
@@ -80,10 +79,6 @@ add_fuzzer(fuzz_binary_decode fuzz_binary_decode.cc)
 add_fuzzer(fuzz_src_ua_util fuzz_src_ua_util.cc)
 add_fuzzer(fuzz_attributeoperand fuzz_attributeoperand.cc)
 
-# Add fuzzer for mdns dependency. It's currently not fuzzed separately.
-# See also: https://github.com/google/oss-fuzz/pull/2928
-add_fuzzer(fuzz_mdns_message ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_message.cc)
-add_fuzzer(fuzz_mdns_xht ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_xht.cc)
 
 add_fuzzer(fuzz_base64_encode fuzz_base64_encode.cc)
 add_fuzzer(fuzz_base64_decode fuzz_base64_decode.cc)
@@ -99,12 +94,6 @@ SET(CORPUS_CMDS "")
 FOREACH(f ${CORPUS_FILES})
     LIST(APPEND CORPUS_CMDS COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/fuzz_binary_message "${f}")
 ENDFOREACH(f)
-
-
-#file(GLOB CORPUS_FILES ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_message_corpus/*)
-#FOREACH(f ${CORPUS_FILES})
-#    LIST(APPEND CORPUS_CMDS COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/fuzz_mdns_message "${f}")
-#ENDFOREACH(f)
 
 add_custom_target(run_fuzzer ${CORPUS_CMDS}
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
