@@ -160,6 +160,25 @@ UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
 
 void UA_DiscoveryManager_mdnsCyclicTimer(UA_Server *server, void *data);
 
+UA_UInt32
+UA_DiscoveryManager_getServerOnNetworkRecordIdCounter(UA_DiscoveryManager *dm);
+
+UA_StatusCode
+UA_DiscoveryManager_resetServerOnNetworkRecordCounter(UA_DiscoveryManager *dm);
+
+UA_DateTime
+UA_DiscoveryManager_getServerOnNetworkCounterResetTime(UA_DiscoveryManager *dm);
+
+struct serverOnNetwork*
+UA_DiscoveryManager_getServerOnNetworkList(UA_DiscoveryManager *dm);
+
+struct serverOnNetwork*
+UA_DiscoveryManager_getNextServerOnNetworkRecord(UA_DiscoveryManager *dm,
+                                  struct serverOnNetwork *current);
+
+UA_StatusCode
+UA_DiscoveryManager_clearServerOnNetwork(UA_DiscoveryManager *dm);
+
 #endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
 #endif /* UA_ENABLE_DISCOVERY */

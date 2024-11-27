@@ -61,26 +61,7 @@ UA_DiscoveryManager_clear(struct UA_ServerComponent *sc) {
     }
 
 # ifdef UA_ENABLE_DISCOVERY_MULTICAST
-    serverOnNetwork *son, *son_tmp;
-    LIST_FOREACH_SAFE(son, &dm->serverOnNetwork, pointers, son_tmp) {
-        LIST_REMOVE(son, pointers);
-        UA_ServerOnNetwork_clear(&son->serverOnNetwork);
-        if(son->pathTmp)
-            UA_free(son->pathTmp);
-        UA_free(son);
-    }
-
-    UA_String_clear(&dm->selfMdnsRecord);
-
-    for(size_t i = 0; i < SERVER_ON_NETWORK_HASH_SIZE; i++) {
-        serverOnNetwork_hash_entry* currHash = dm->serverOnNetworkHash[i];
-        while(currHash) {
-            serverOnNetwork_hash_entry* nextHash = currHash->next;
-            UA_free(currHash);
-            currHash = nextHash;
-        }
-    }
-
+    UA_DiscoveryManager_clearServerOnNetwork(dm);
 # endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
     return UA_STATUSCODE_GOOD;
@@ -162,12 +143,6 @@ UA_DiscoveryManager_start(struct UA_ServerComponent *sc,
     sc->server = server; /* Set the backpointer */
 
     UA_DiscoveryManager *dm = (UA_DiscoveryManager*)sc;
-
-#ifdef UA_ENABLE_DISCOVERY_MULTICAST
-    UA_EventLoop *el = server->config.eventLoop;
-    dm->serverOnNetworkRecordIdLastReset = el->dateTime_now(el);
-#endif /* UA_ENABLE_DISCOVERY_MULTICAST */
-
     UA_StatusCode res =
         addRepeatedCallback(server, UA_DiscoveryManager_cyclicTimer,
                             dm, 1000.0, &dm->discoveryCallbackId);
@@ -175,6 +150,7 @@ UA_DiscoveryManager_start(struct UA_ServerComponent *sc,
         return res;
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
+    UA_DiscoveryManager_resetServerOnNetworkRecordCounter(dm);
     if(server->config.mdnsEnabled)
         UA_DiscoveryManager_startMulticast(dm);
 #endif

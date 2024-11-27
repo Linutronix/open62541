@@ -233,12 +233,14 @@ Service_FindServersOnNetwork(UA_Server *server, UA_Session *session,
 
     /* Set LastCounterResetTime */
     response->lastCounterResetTime =
-        dm->serverOnNetworkRecordIdLastReset;
+        UA_DiscoveryManager_getServerOnNetworkCounterResetTime(dm);
 
     /* Compute the max number of records to return */
     UA_UInt32 recordCount = 0;
-    if(request->startingRecordId < dm->serverOnNetworkRecordIdCounter)
-        recordCount = dm->serverOnNetworkRecordIdCounter - request->startingRecordId;
+    UA_UInt32 serverOnNetworkRecordIdCounter =
+        UA_DiscoveryManager_getServerOnNetworkRecordIdCounter(dm);
+    if(request->startingRecordId < serverOnNetworkRecordIdCounter)
+        recordCount = serverOnNetworkRecordIdCounter - request->startingRecordId;
     if(request->maxRecordsToReturn && recordCount > request->maxRecordsToReturn)
         recordCount = UA_MIN(recordCount, request->maxRecordsToReturn);
     if(recordCount == 0) {
@@ -249,8 +251,12 @@ Service_FindServersOnNetwork(UA_Server *server, UA_Session *session,
     /* Iterate over all records and add to filtered list */
     UA_UInt32 filteredCount = 0;
     UA_STACKARRAY(UA_ServerOnNetwork*, filtered, recordCount);
-    serverOnNetwork *current;
-    LIST_FOREACH(current, &dm->serverOnNetwork, pointers) {
+    serverOnNetwork *current = UA_DiscoveryManager_getServerOnNetworkList(dm);
+    if(!current) {
+        response->responseHeader.serviceResult = UA_STATUSCODE_BADINTERNALERROR;
+        return;
+    }
+    for(size_t i = 0; i < recordCount; i++) {
         if(filteredCount >= recordCount)
             break;
         if(current->serverOnNetwork.recordId < request->startingRecordId)
@@ -259,6 +265,7 @@ Service_FindServersOnNetwork(UA_Server *server, UA_Session *session,
                                request->serverCapabilityFilter, current))
             continue;
         filtered[filteredCount++] = &current->serverOnNetwork;
+        current = UA_DiscoveryManager_getNextServerOnNetworkRecord(dm, current);
     }
 
     if(filteredCount == 0)

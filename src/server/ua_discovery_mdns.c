@@ -147,7 +147,7 @@ UA_DiscoveryManager_addEntryToServersOnNetwork(UA_DiscoveryManager *dm,
     }
     dm->serverOnNetworkRecordIdCounter++;
     if(dm->serverOnNetworkRecordIdCounter == 0)
-        dm->serverOnNetworkRecordIdLastReset = el->dateTime_now(el);
+        UA_DiscoveryManager_resetServerOnNetworkRecordCounter(dm);
     listEntry->lastSeen = el->dateTime_nowMonotonic(el);
 
     /* add to hash */
@@ -223,6 +223,50 @@ UA_DiscoveryManager_removeEntryFromServersOnNetwork(UA_DiscoveryManager *dm,
     }
     UA_free(entry);
     return UA_STATUSCODE_GOOD;
+}
+
+UA_StatusCode
+UA_DiscoveryManager_clearServerOnNetwork(UA_DiscoveryManager *dm) {
+    if(!dm) {
+        UA_LOG_ERROR(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
+                     "DiscoveryManager is NULL");
+        return UA_STATUSCODE_BADINVALIDARGUMENT;
+    }
+
+    serverOnNetwork *son, *son_tmp;
+    LIST_FOREACH_SAFE(son, &dm->serverOnNetwork, pointers, son_tmp) {
+        LIST_REMOVE(son, pointers);
+        UA_ServerOnNetwork_clear(&son->serverOnNetwork);
+        if(son->pathTmp)
+            UA_free(son->pathTmp);
+        UA_free(son);
+    }
+
+    UA_String_clear(&dm->selfMdnsRecord);
+
+    for(size_t i = 0; i < SERVER_ON_NETWORK_HASH_SIZE; i++) {
+        serverOnNetwork_hash_entry* currHash = dm->serverOnNetworkHash[i];
+        while(currHash) {
+            serverOnNetwork_hash_entry* nextHash = currHash->next;
+            UA_free(currHash);
+            currHash = nextHash;
+        }
+    }
+
+    return UA_STATUSCODE_GOOD;
+}
+
+struct serverOnNetwork*
+UA_DiscoveryManager_getServerOnNetworkList(UA_DiscoveryManager *dm) {
+    return LIST_FIRST(&dm->serverOnNetwork);
+}
+
+struct serverOnNetwork*
+UA_DiscoveryManager_getNextServerOnNetworkRecord(UA_DiscoveryManager *dm,
+                                  struct serverOnNetwork *current) {
+    if(!current || !dm)
+        return LIST_END(&dm->serverOnNetwork);
+    return LIST_NEXT(current, pointers);
 }
 
 
@@ -599,6 +643,39 @@ void UA_DiscoveryManager_mdnsCyclicTimer(UA_Server *server, void *data) {
         UA_LOG_ERROR(server->config.logging, UA_LOGCATEGORY_DISCOVERY,
                      "Error in avahi_simple_poll_iterate: %s", avahi_strerror(ret));
     }
+}
+
+UA_UInt32
+UA_DiscoveryManager_getServerOnNetworkRecordIdCounter(UA_DiscoveryManager *dm) {
+    if(!dm) {
+        UA_LOG_ERROR(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
+                     "DiscoveryManager is NULL");
+        return 0;
+    }
+    return dm->serverOnNetworkRecordIdCounter;
+}
+
+UA_StatusCode
+UA_DiscoveryManager_resetServerOnNetworkRecordCounter(UA_DiscoveryManager *dm) {
+    if(!dm) {
+        UA_LOG_ERROR(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
+                     "DiscoveryManager is NULL");
+        return UA_STATUSCODE_BADINTERNALERROR;
+    }
+    dm->serverOnNetworkRecordIdCounter = 0;
+    dm->serverOnNetworkRecordIdLastReset = dm->sc.server->config.eventLoop->dateTime_now(
+        dm->sc.server->config.eventLoop);
+    return UA_STATUSCODE_GOOD;
+}
+
+UA_DateTime
+UA_DiscoveryManager_getServerOnNetworkCounterResetTime(UA_DiscoveryManager *dm) {
+    if(!dm) {
+        UA_LOG_ERROR(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
+                     "DiscoveryManager is NULL");
+        return 0;
+    }
+    return dm->serverOnNetworkRecordIdLastReset;
 }
 
 /* Create a service domain with the format [servername]-[hostname]._opcua-tcp._tcp.local. */
