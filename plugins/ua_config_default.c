@@ -380,11 +380,13 @@ setDefaultConfig(UA_ServerConfig *conf, UA_UInt16 portNumber) {
 
 #ifdef UA_ENABLE_DISCOVERY_MULTICAST
     UA_MdnsDiscoveryConfiguration_clear(&conf->mdnsConfig);
+#ifdef UA_ENABLE_DISCOVERY_MULTICAST_MDNSD
     conf->mdnsInterfaceIP = UA_STRING_NULL;
 # if !defined(UA_HAS_GETIFADDR)
     conf->mdnsIpAddressList = NULL;
     conf->mdnsIpAddressListSize = 0;
 # endif
+#endif
 #endif
 
     /* Custom DataTypes */
