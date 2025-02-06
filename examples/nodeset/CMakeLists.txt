@@ -129,3 +129,69 @@ if(UA_ENABLE_NODESET_INJECTOR)
     set(UA_NODESETINJECTOR_SOURCE_FILES ${UA_NODESETINJECTOR_SOURCE_FILES} PARENT_SCOPE)
     set(UA_NODESETINJECTOR_EXAMPLE_NAMES ${UA_NODESETINJECTOR_EXAMPLE_NAMES} PARENT_SCOPE)
 endif()
+
+################
+# UAFX Nodeset #
+################
+
+if(NOT CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(FILE_UAFX_DIRPREFIX ${UA_NODESET_DIR})
+else()
+    set(FILE_UAFX_DIRPREFIX ${UA_NODESET_DIR})
+endif()
+
+if(UA_NAMESPACE_ZERO STREQUAL "FULL")
+
+    # Generate types and namespace for DI
+    ua_generate_nodeset_and_datatypes(
+        NAME "di"
+        FILE_CSV "${FILE_CSV_DIRPREFIX}/DI/Opc.Ua.Di.NodeIds.csv"
+        FILE_BSD "${FILE_BSD_PLCOPEN_DIRPREFIX}/DI/Opc.Ua.Di.Types.bsd"
+        FILE_NS "${FILE_NS_DIRPREFIX}/DI/Opc.Ua.Di.NodeSet2.xml"
+        INTERNAL
+    )
+
+    ua_generate_nodeset_and_datatypes(
+        NAME "fxdata"
+        FILE_CSV "${FILE_CSV_DIRPREFIX}/UAFX/opc.ua.fx.data.nodeset2.csv"
+        FILE_BSD "${FILE_UAFX_DIRPREFIX}/UAFX/opc.ua.fx.data.nodeset2.bsd"
+        FILE_NS "${FILE_NS_DIRPREFIX}/UAFX/opc.ua.fx.data.nodeset2.xml"
+        IMPORT_BSD "UA_TYPES#${CMAKE_CURRENT_LIST_DIR}/../../deps/ua-nodeset/Schema/Opc.Ua.Types.bsd"
+        DEPENDS "di"
+        INTERNAL
+    )
+
+    ua_generate_nodeset_and_datatypes(
+        NAME "fxcm"
+        FILE_CSV "${FILE_CSV_DIRPREFIX}/UAFX/opc.ua.fx.cm.nodeset2.csv"
+        FILE_BSD "${FILE_UAFX_DIRPREFIX}/UAFX/opc.ua.fx.cm.nodeset2.bsd"
+        FILE_NS "${FILE_NS_DIRPREFIX}/UAFX/opc.ua.fx.cm.nodeset2.xml"
+        IMPORT_BSD "UA_TYPES#${CMAKE_CURRENT_LIST_DIR}/../../deps/ua-nodeset/Schema/Opc.Ua.Types.bsd"
+        DEPENDS "di"
+        DEPENDS "fxdata"
+        INTERNAL
+    )
+
+    ua_generate_nodeset_and_datatypes(
+        NAME "fxac"
+        FILE_CSV "${FILE_CSV_DIRPREFIX}/UAFX/opc.ua.fx.ac.nodeset2.csv"
+        FILE_BSD "${FILE_UAFX_DIRPREFIX}/UAFX/opc.ua.fx.ac.nodeset2.bsd"
+        FILE_NS "${FILE_NS_DIRPREFIX}/UAFX/opc.ua.fx.ac.nodeset2.xml"
+        IMPORT_BSD "UA_TYPES#${CMAKE_CURRENT_LIST_DIR}/../../deps/ua-nodeset/Schema/Opc.Ua.Types.bsd"
+        DEPENDS "di"
+        DEPENDS "fxcm"
+        INTERNAL
+    )
+
+    add_example(server_nodeset_uafx server_nodeset_uafx.c
+                ${UA_NODESET_DI_SOURCES}
+                ${UA_NODESET_FXCM_SOURCES}
+                ${UA_NODESET_FXDATA_SOURCES}
+                ${UA_NODESET_FXAC_SOURCES}
+                ${UA_TYPES_DI_SOURCES}
+                ${UA_TYPES_FXCM_SOURCES}
+                ${UA_TYPES_FXDATA_SOURCES}
+                ${UA_TYPES_FXAC_SOURCES}
+                )
+    add_dependencies(server_nodeset_uafx open62541-generator-ns-di open62541-generator-ns-fxcm open62541-generator-ns-fxdata open62541-generator-ns-fxac)
+endif()
