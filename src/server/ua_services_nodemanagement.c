@@ -122,6 +122,9 @@ checkParentReference(UA_Server *server, UA_Session *session, const UA_NodeHead *
     if(!parent) {
         logAddNode(server->config.logging, session, &head->nodeId,
                    "Parent node not found");
+        UA_LOG_INFO_SESSION(server->config.logging, session,
+                            "Parent node (%N) not found for Node (%N)", *parentNodeId,
+                            head->nodeId);
         return UA_STATUSCODE_BADPARENTNODEIDINVALID;
     }
 
@@ -861,6 +864,8 @@ addNode_addRefs(UA_Server *server, UA_Session *session, const UA_NodeId *nodeId,
     if(retval != UA_STATUSCODE_GOOD) {
         logAddNode(server->config.logging, session, nodeId,
                    "The parent reference for is invalid");
+        UA_LOG_INFO_SESSION(server->config.logging, session,
+                            "Invalid parent node (%N)", *parentNodeId);
         goto cleanup;
     }
 
@@ -1088,9 +1093,9 @@ addNode_raw(UA_Server *server, UA_Session *session, void *nodeContext,
     retval = UA_NODESTORE_INSERT(server, node, outNewNodeId);
     if(retval != UA_STATUSCODE_GOOD) {
         UA_LOG_INFO_SESSION(server->config.logging, session,
-                            "AddNode: Node could not add the new node "
+                            "AddNode: Could not add the new node %N "
                             "to the nodestore with error code %s",
-                            UA_StatusCode_name(retval));
+                            node, UA_StatusCode_name(retval));
         return retval;
     }
 
