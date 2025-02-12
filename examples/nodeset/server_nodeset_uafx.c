@@ -25,6 +25,32 @@ stopHandler(int sign) {
     running = false;
 }
 
+static UA_StatusCode
+getNodefromPath(UA_Server *server, UA_UInt16 nameSpace, UA_NodeId startNode, char *targetName,
+            UA_NodeId *nodeId) {
+    UA_RelativePathElement rpe;
+    UA_RelativePathElement_init(&rpe);
+    rpe.referenceTypeId = UA_NS0ID(HASCOMPONENT);
+    rpe.isInverse = false;
+    rpe.includeSubtypes = false;
+    rpe.targetName = UA_QUALIFIEDNAME(nameSpace, targetName);
+
+    UA_BrowsePath bp;
+    UA_BrowsePath_init(&bp);
+    bp.startingNode = startNode;
+    bp.relativePath.elementsSize = 1;
+    bp.relativePath.elements = &rpe;
+
+    UA_BrowsePathResult bpr = UA_Server_translateBrowsePathToNodeIds(server, &bp);
+    if(bpr.statusCode != UA_STATUSCODE_GOOD || bpr.targetsSize < 1) {
+        return bpr.statusCode;
+    }
+
+    *nodeId = bpr.targets[0].targetId.nodeId;
+    UA_BrowsePathResult_clear(&bpr);
+    return UA_STATUSCODE_GOOD;
+}
+
 int
 main(int argc, char **argv) {
     signal(SIGINT, stopHandler);
@@ -149,6 +175,43 @@ main(int argc, char **argv) {
     UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
                 "OPC UA FX Automation Component instance created. NodeId: %N",
                 automationComponentInstanceId);
+
+    /* Get FunctionalEntities folder as parent for FunctionalEntity */
+    UA_NodeId functionalEntityInstanceId;
+    UA_ObjectAttributes feAttr = UA_ObjectAttributes_default;
+    feAttr.displayName = UA_LOCALIZEDTEXT("en-US", "Some Functional Entity");
+
+    /* Get the parent nodeid FunctionalEntities */
+    UA_NodeId functionalEntitiesNodeId;
+    retval = getNodefromPath(server, (UA_Int16) fxac_idx, automationComponentInstanceId,
+                         "FunctionalEntities", &functionalEntitiesNodeId);
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Failed to get FunctionalEntities node: %s",
+                     UA_StatusCode_name(retval));
+        goto cleanup;
+    }
+
+    /* Add a new FunctionalEntity Instance to FunctionalEntities folder*/
+    UA_NodeId functionalEntityTypeId =
+    UA_NODEID_NUMERIC(fxac_idx, UA_FXACID_FUNCTIONALENTITYTYPE);
+    retval = UA_Server_addObjectNode(
+        server, UA_NODEID_NULL,        /* Let the server assign a NodeId */
+        functionalEntitiesNodeId, /* Parent: the FunctionalEntities folder */
+        UA_NODEID_NUMERIC(0, UA_NS0ID_HASCOMPONENT), /* Reference: HasComponent */
+        UA_QUALIFIEDNAME(fxdata_idx, "SomeFunctionalEntity"), /* BrowseName */
+        functionalEntityTypeId, feAttr, NULL, &functionalEntityInstanceId);
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                     "Failed to create Functional Entity instance: %s",
+                     UA_StatusCode_name(retval));
+        UA_Server_delete(server);
+        return (int)retval;
+    }
+
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                "Functional Entity instance created. NodeId: %N",
+                functionalEntityInstanceId);
 
     retval = UA_Server_run(server, &running);
 
