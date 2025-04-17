@@ -10,6 +10,8 @@
 #include "open62541/namespace_fxac_generated.h"
 #include "open62541/namespace_fxcm_generated.h"
 #include "open62541/namespace_fxdata_generated.h"
+#include "open62541/fxdata_nodeids.h"
+#include "open62541/fxac_nodeids.h"
 
 #include <limits.h>
 #include <signal.h>
@@ -32,62 +34,106 @@ main(int argc, char **argv) {
     UA_ServerConfig_setDefault(UA_Server_getConfig(server));
 
     /* create nodes from nodeset */
-    size_t idx = LONG_MAX;
     UA_StatusCode retval = 0;
-    retval = UA_Server_getNamespaceByName(
-        server, UA_STRING("http://opcfoundation.org/UA/DI/"), &idx);
+    retval = namespace_di_generated(server);
     if(retval != UA_STATUSCODE_GOOD) {
-        retval = namespace_di_generated(server);
-        if(retval != UA_STATUSCODE_GOOD) {
-            UA_LOG_ERROR(
-                UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
-                "Adding the DI namespace failed. Please check previous error output.");
-            UA_Server_delete(server);
-            return EXIT_FAILURE;
-        }
+        UA_LOG_ERROR(
+            UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+            "Adding the DI namespace failed. Please check previous error output.");
+        goto cleanup;
     }
 
-    retval = UA_Server_getNamespaceByName(
-        server, UA_STRING("http://opcfoundation.org/UA/FX/Data/"), &idx);
+    size_t fxdata_idx = LONG_MAX;
+    retval = namespace_fxdata_generated(server);
     if(retval != UA_STATUSCODE_GOOD) {
-        retval = namespace_fxdata_generated(server);
-        if(retval != UA_STATUSCODE_GOOD) {
-            UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
-                         "Adding the UAFX Data namespace failed. Please check previous "
-                         "error output.");
-            UA_Server_delete(server);
-            return EXIT_FAILURE;
-        }
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX Data namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
+    }
+    if(UA_Server_getNamespaceByName(server,
+                                    UA_STRING("http://opcfoundation.org/UA/FX/Data/"),
+                                    &fxdata_idx) != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX Data namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
+    }
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                "UAFX Data namespace added. Index: %zu", fxdata_idx);
+
+    size_t fxcm_idx = LONG_MAX;
+    retval = namespace_fxcm_generated(server);
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX CM namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
+    }
+    if(UA_Server_getNamespaceByName(server,
+                                    UA_STRING("http://opcfoundation.org/UA/FX/CM/"),
+                                    &fxcm_idx) != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX CM namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
+    }
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                "UAFX CM namespace added. Index: %zu", fxcm_idx);
+
+    size_t fxac_idx = LONG_MAX;
+    retval = namespace_fxac_generated(server);
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX AC namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
     }
 
-    retval = UA_Server_getNamespaceByName(
-        server, UA_STRING("http://opcfoundation.org/UA/FX/CM/"), &idx);
+    if(UA_Server_getNamespaceByName(server,
+                                    UA_STRING("http://opcfoundation.org/UA/FX/AC/"),
+                                    &fxac_idx) != UA_STATUSCODE_GOOD) {
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Adding the UAFX AC namespace failed. Please check previous "
+                     "error output.");
+        goto cleanup;
+    }
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                "UAFX AC namespace added. Index: %zu", fxac_idx);
+
+    /* Create an instance of the AutomationComponentType */
+    UA_NodeId automationComponentTypeId =
+        UA_NODEID_NUMERIC(fxac_idx, UA_FXACID_AUTOMATIONCOMPONENTTYPE);
+
+    UA_NodeId automationComponentInstanceId;
+    UA_ObjectAttributes objAttr = UA_ObjectAttributes_default;
+    objAttr.displayName = UA_LOCALIZEDTEXT("en-US", "Some Automation Component");
+
+    /* Add the object node (an instance of AutomationComponentType) under the specified
+     * ObjectsFolder */
+    retval = UA_Server_addObjectNode(
+        server, UA_NODEID_NULL, /* Let the server assign a NodeId for the instance */
+        UA_NODEID_NUMERIC(fxdata_idx, UA_FXDATAID_FXROOT), /* Parent: fxRoot folder */
+        UA_NODEID_NUMERIC(0,
+                          UA_NS0ID_ORGANIZES), /* Reference type from parent to child */
+        UA_QUALIFIEDNAME(fxdata_idx, "SomeAutomationComponent"),
+        automationComponentTypeId, /* TypeDefinition */
+        objAttr, NULL,             /* No specific instantiation information */
+        &automationComponentInstanceId);
     if(retval != UA_STATUSCODE_GOOD) {
-        retval = namespace_fxcm_generated(server);
-        if(retval != UA_STATUSCODE_GOOD) {
-            UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
-                         "Adding the UAFX CM namespace failed. Please check previous "
-                         "error output.");
-            UA_Server_delete(server);
-            return EXIT_FAILURE;
-        }
+        UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                     "Failed to create Automation Component instance: %s",
+                     UA_StatusCode_name(retval));
+        goto cleanup;
     }
 
-    retval = UA_Server_getNamespaceByName(
-        server, UA_STRING("http://opcfoundation.org/UA/FX/AC/"), &idx);
-    if(retval != UA_STATUSCODE_GOOD) {
-        retval = namespace_fxac_generated(server);
-        if(retval != UA_STATUSCODE_GOOD) {
-            UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
-                         "Adding the UAFX AC namespace failed. Please check previous "
-                         "error output.");
-            UA_Server_delete(server);
-            return EXIT_FAILURE;
-        }
-    }
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER,
+                "OPC UA FX Automation Component instance created. NodeId: %N",
+                automationComponentInstanceId);
 
     retval = UA_Server_run(server, &running);
 
+cleanup:
     UA_Server_delete(server);
     return retval == UA_STATUSCODE_GOOD ? EXIT_SUCCESS : EXIT_FAILURE;
 }
