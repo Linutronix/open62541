@@ -411,6 +411,7 @@ addMdnsRecordForNetworkLayer(UA_DiscoveryManager *dm, const UA_String serverName
     retval = UA_Discovery_addRecord(dm, serverName, hostname, port, path, UA_DISCOVERY_TCP, true,
                                     dm->sc.server->config.mdnsConfig.serverCapabilities,
                                     dm->sc.server->config.mdnsConfig.serverCapabilitiesSize, true);
+    UA_String_clear(&hostname);
     if(retval != UA_STATUSCODE_GOOD) {
         UA_LOG_WARNING(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
                        "Cannot add mDNS Record: %s", UA_StatusCode_name(retval));
@@ -645,6 +646,7 @@ UA_DiscoveryManager_stopMulticast(UA_DiscoveryManager *dm) {
 
         UA_Discovery_removeRecord(dm, server->config.mdnsConfig.mdnsServerName,
                                   hostname, port, true);
+        UA_String_clear(&hostname);
     }
     /* clean up avahi resources */
     if(mdnsPrivateData.browser)
@@ -996,7 +998,6 @@ UA_Discovery_addRecord(UA_DiscoveryManager *dm, const UA_String servername,
                      "Failed to add TXT record for %s", serviceDomain);
         goto cleanup;
     }
-    avahi_free(hostnameStr);
 
     if (avahi_entry_group_commit(listEntry->group) < 0) {
         UA_LOG_ERROR(dm->sc.server->config.logging, UA_LOGCATEGORY_DISCOVERY,
@@ -1004,9 +1005,12 @@ UA_Discovery_addRecord(UA_DiscoveryManager *dm, const UA_String servername,
         return UA_STATUSCODE_BADINTERNALERROR;
     }
 
+    avahi_string_list_free(txt);
+    avahi_free(hostnameStr);
     return UA_STATUSCODE_GOOD;
 
 cleanup:
+    avahi_string_list_free(txt);
     avahi_free(hostnameStr);
     return UA_STATUSCODE_BADINTERNALERROR;
 }
@@ -1037,6 +1041,7 @@ UA_Discovery_removeRecord(UA_DiscoveryManager *dm, const UA_String servername,
     UA_String serverName = UA_String_fromChars(serviceDomain);
     UA_StatusCode retval =
         UA_DiscoveryManager_removeEntryFromServersOnNetwork(dm, serverName);
+    UA_String_clear(&serverName);
     return retval;
 }
 
